@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Weather dashboard</title>
+<style>
+  :root {
+    --bg: #f4f5f7;
+    --card: #ffffff;
+    --border: #e2e4e8;
+    --track: #eceef1;
+    --text-primary: #16181d;
+    --text-secondary: #6b7280;
+    --text-muted: #9aa0aa;
+    --accent: #2a78d6;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 24px;
+    background: var(--bg);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+    color: var(--text-primary);
+  }
+  .dashboard {
+    max-width: 780px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 1.4fr 1fr;
+    grid-template-rows: auto 1fr;
+    grid-template-areas:
+      "header days"
+      "graph  days";
+    gap: 16px;
+  }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px 20px;
+  }
+  .header {
+    grid-area: header;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .header .icon { font-size: 34px; line-height: 1; flex-shrink: 0; }
+  .header .place-info { flex: 1; min-width: 0; }
+  .header h1 { margin: 0; font-size: 16px; font-weight: 600; }
+  .header .sub { margin: 2px 0 0; font-size: 12px; color: var(--text-secondary); }
+  .header .time { font-size: 12px; color: var(--text-secondary); }
+  .header .temp-block { text-align: right; flex-shrink: 0; }
+  .header .temp { font-size: 28px; font-weight: 600; line-height: 1; }
+  .header .cond { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+
+  .graph { grid-area: graph; }
+  .graph h3 { margin: 0 0 8px; font-size: 13px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.03em; }
+  .graph-wrap { position: relative; width: 100%; height: 180px; }
+
+  .days {
+    grid-area: days;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .day-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+  }
+  .day-row .name { font-size: 13px; font-weight: 600; width: 34px; flex-shrink: 0; }
+  .day-row .icon { font-size: 18px; width: 24px; text-align: center; flex-shrink: 0; }
+
+  /* range bar widget: ( ||||| ) style, scaled to the shared week min/max */
+  .range-bar {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+  }
+  .range-bar .lo, .range-bar .hi {
+    font-size: 12px;
+    color: var(--text-secondary);
+    width: 30px;
+    flex-shrink: 0;
+  }
+  .range-bar .lo { text-align: right; }
+  .range-bar .track {
+    position: relative;
+    flex: 1;
+    height: 14px;
+    background: var(--track);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .range-bar .fill {
+    position: absolute;
+    top: 2px;
+    bottom: 2px;
+    background: var(--accent);
+    border-radius: 2px;
+  }
+
+  @media (max-width: 560px) {
+    .dashboard {
+      grid-template-columns: 1fr;
+      grid-template-areas:
+        "header"
+        "graph"
+        "days";
+    }
+  }
+</style>
+</head>
+<body>
+
+<div class="dashboard">
+
+  <div class="card header">
+    <div class="icon">🌙</div>
+    <div class="place-info">
+      <h1>Warsaw, Poland</h1>
+      <p class="sub">Saturday, July 18 &middot; <span class="time" id="localTime"></span></p>
+    </div>
+    <div class="temp-block">
+      <div class="temp">20°C</div>
+      <div class="cond">Clear</div>
+    </div>
+  </div>
+
+  <div class="card graph">
+    <h3>Next 24 hours</h3>
+    <div class="graph-wrap">
+      <canvas id="tempChart" role="img" aria-label="Chart of temperature and chance of rain over the next 24 hours. Temperature dips to about 17 degrees Celsius before dawn and rises to about 26 degrees Celsius in the afternoon. Chance of rain is highest now and overnight, tapering off by afternoon">Hourly temperature over the next 24h, in Celsius: now 20, +3h 18, +6h 17, +9h 19, +12h 23, +15h 26, +18h 24, +21h 21, +24h 20. Chance of rain, in percent: now 60, +3h 70, +6h 50, +9h 20, +12h 10, +15h 5, +18h 15, +21h 30, +24h 40.</canvas>
+    </div>
+  </div>
+
+  <div class="card days" id="days">
+    <!-- rows injected by script, built from each day's low/high scaled to the shared week min/max -->
+  </div>
+
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+  document.getElementById('localTime').textContent = '11:42 PM';
+
+  // --- 24h trend (modeled diurnal curve; only daily highs/precip chance were available from the forecast source) ---
+  const hourLabels = ['Now', '+3h', '+6h', '+9h', '+12h', '+15h', '+18h', '+21h', '+24h'];
+  const hourTemps = [20, 18, 17, 19, 23, 26, 24, 21, 20];
+  const hourRain = [60, 70, 50, 20, 10, 5, 15, 30, 40];
+
+  new Chart(document.getElementById('tempChart'), {
+    data: {
+      labels: hourLabels,
+      datasets: [
+        {
+          type: 'bar',
+          label: 'Chance of rain (%)',
+          data: hourRain,
+          backgroundColor: '#a9c7ea',
+          borderRadius: 3,
+          yAxisID: 'y1',
+          order: 2
+        },
+        {
+          type: 'line',
+          label: 'Temperature (\u00b0C)',
+          data: hourTemps,
+          borderColor: '#e0a800',
+          backgroundColor: 'rgba(224, 168, 0, 0.12)',
+          borderWidth: 2,
+          pointRadius: 4,
+          pointBackgroundColor: '#e0a800',
+          pointBorderColor: '#ffffff',
+          pointBorderWidth: 2,
+          fill: true,
+          tension: 0.35,
+          yAxisID: 'y',
+          order: 1
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        y: {
+          position: 'left',
+          ticks: { callback: (v) => v + '\u00b0' },
+          grid: { color: '#eceef1' }
+        },
+        y1: {
+          position: 'right',
+          min: 0,
+          max: 100,
+          ticks: { callback: (v) => v + '%' },
+          grid: { display: false }
+        },
+        x: {
+          grid: { display: false }
+        }
+      }
+    }
+  });
+
+  // --- upcoming days, each with a range bar scaled to the shared week min/max ---
+  const days = [
+    { name: 'Sat', icon: '\ud83c\udf27\ufe0f', low: 17, high: 26 },
+    { name: 'Sun', icon: '\ud83c\udf27\ufe0f', low: 17, high: 26 },
+    { name: 'Mon', icon: '\u2601\ufe0f', low: 14, high: 22 },
+    { name: 'Tue', icon: '\u2601\ufe0f', low: 11, high: 18 },
+    { name: 'Wed', icon: '\u2601\ufe0f', low: 13, high: 21 }
+  ];
+
+  const weekMin = Math.min(...days.map(d => d.low));
+  const weekMax = Math.max(...days.map(d => d.high));
+  const weekSpan = weekMax - weekMin;
+
+  const daysEl = document.getElementById('days');
+  days.forEach(d => {
+    const startPct = ((d.low - weekMin) / weekSpan) * 100;
+    const widthPct = ((d.high - d.low) / weekSpan) * 100;
+
+    const row = document.createElement('div');
+    row.className = 'day-row';
+    row.innerHTML = `
+      <span class="name">${d.name}</span>
+      <span class="icon">${d.icon}</span>
+      <span class="range-bar">
+        <span class="lo">${d.low}\u00b0</span>
+        <span class="track">
+          <span class="fill" style="left:${startPct}%; width:${widthPct}%;"></span>
+        </span>
+        <span class="hi">${d.high}\u00b0</span>
+      </span>
+    `;
+    daysEl.appendChild(row);
+  });
+</script>
+
+</body>
+</html>
