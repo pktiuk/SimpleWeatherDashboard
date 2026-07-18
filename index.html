@@ -148,10 +148,15 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script>
-  // --- location: change these for a different city ---
-  const LAT = 52.2297;
-  const LON = 21.0122;
-  const LOCATION_NAME = 'Warsaw, Poland';
+  // --- location: defaults, overridable via URL params ---
+  // Examples:
+  //   ?lat=48.8566&lon=2.3522&name=Paris,%20France
+  //   ?city=Tokyo
+  const DEFAULT_LAT = 52.2297;
+  const DEFAULT_LON = 21.0122;
+  const DEFAULT_LOCATION_NAME = 'Warsaw, Poland';
+
+  const urlParams = new URLSearchParams(window.location.search);
 
   // WMO weather codes -> [emoji, text]. https://open-meteo.com/en/docs
   const WEATHER_CODES = {
@@ -175,29 +180,69 @@
     return (WEATHER_CODES[code] || ['', 'Unknown'])[1];
   }
 
-  const params = new URLSearchParams({
-    latitude: LAT,
-    longitude: LON,
-    current: 'temperature_2m,weather_code,is_day',
-    hourly: 'temperature_2m,precipitation_probability',
-    daily: 'weather_code,temperature_2m_max,temperature_2m_min',
-    timezone: 'auto',
-    forecast_days: '6'
-  });
-
-  fetch(`https://api.open-meteo.com/v1/forecast?${params}`)
-    .then(res => {
-      if (!res.ok) throw new Error('Open-Meteo request failed: ' + res.status);
-      return res.json();
-    })
+  // Resolve the location to use, then kick off the forecast fetch.
+  resolveLocation()
+    .then(loadForecast)
     .then(renderDashboard)
     .catch(err => {
       console.error(err);
       document.querySelector('.dashboard').insertAdjacentHTML(
         'afterbegin',
-        '<p style="grid-column: 1 / -1; color: var(--text-secondary); font-size: 13px;">Couldn\u2019t load live weather data. Check your connection and reload.</p>'
+        '<p style="grid-column: 1 / -1; color: var(--text-secondary); font-size: 13px;">Couldn\u2019t load live weather data. Check your connection, or the ?city= / ?lat=&lon= value in the URL, and reload.</p>'
       );
     });
+
+  // Returns { lat, lon, name }, from URL params if present, else the defaults.
+  function resolveLocation() {
+    const latParam = urlParams.get('lat');
+    const lonParam = urlParams.get('lon');
+    const nameParam = urlParams.get('name');
+    const cityParam = urlParams.get('city');
+
+    if (latParam && lonParam) {
+      return Promise.resolve({
+        lat: parseFloat(latParam),
+        lon: parseFloat(lonParam),
+        name: nameParam || `${latParam}, ${lonParam}`
+      });
+    }
+
+    if (cityParam) {
+      const geoParams = new URLSearchParams({ name: cityParam, count: '1', language: 'en', format: 'json' });
+      return fetch(`https://geocoding-api.open-meteo.com/v1/search?${geoParams}`)
+        .then(res => res.json())
+        .then(geo => {
+          const hit = geo.results && geo.results[0];
+          if (!hit) throw new Error(`No location found for "${cityParam}"`);
+          const label = [hit.name, hit.admin1, hit.country].filter(Boolean).join(', ');
+          return { lat: hit.latitude, lon: hit.longitude, name: label };
+        });
+    }
+
+    return Promise.resolve({ lat: DEFAULT_LAT, lon: DEFAULT_LON, name: DEFAULT_LOCATION_NAME });
+  }
+
+  function loadForecast(location) {
+    const params = new URLSearchParams({
+      latitude: location.lat,
+      longitude: location.lon,
+      current: 'temperature_2m,weather_code,is_day',
+      hourly: 'temperature_2m,precipitation_probability',
+      daily: 'weather_code,temperature_2m_max,temperature_2m_min',
+      timezone: 'auto',
+      forecast_days: '6'
+    });
+
+    return fetch(`https://api.open-meteo.com/v1/forecast?${params}`)
+      .then(res => {
+        if (!res.ok) throw new Error('Open-Meteo request failed: ' + res.status);
+        return res.json();
+      })
+      .then(data => {
+        data._locationName = location.name;
+        return data;
+      });
+  }
 
   function renderDashboard(data) {
     renderHeader(data);
@@ -208,7 +253,7 @@
   function renderHeader(data) {
     const cur = data.current;
     document.querySelector('.header .icon').textContent = iconFor(cur.weather_code, cur.is_day);
-    document.querySelector('.header h1').textContent = LOCATION_NAME;
+    document.querySelector('.header h1').textContent = data._locationName;
     document.querySelector('.temp-block .temp').textContent = Math.round(cur.temperature_2m) + '\u00b0C';
     document.querySelector('.temp-block .cond').textContent = textFor(cur.weather_code);
 
