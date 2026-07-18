@@ -15,6 +15,7 @@
     --accent: #2a78d6;
   }
   * { box-sizing: border-box; }
+  html, body { width: 100%; overflow-x: hidden; }
   body {
     margin: 0;
     padding: 24px;
@@ -24,14 +25,15 @@
   }
   .dashboard {
     max-width: 780px;
+    width: 100%;
     margin: 0 auto;
     display: grid;
-    grid-template-columns: 1.4fr 1fr;
+    grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
     grid-template-rows: auto 1fr;
     grid-template-areas:
       "header days"
       "graph  days";
-    gap: 16px;
+    gap: 10px;
   }
   .card {
     background: var(--card);
@@ -104,9 +106,9 @@
     border-radius: 2px;
   }
 
-  @media (max-width: 560px) {
+  @media (max-width: 700px) {
     .dashboard {
-      grid-template-columns: 1fr;
+      grid-template-columns: minmax(0, 1fr);
       grid-template-areas:
         "header"
         "graph"
@@ -120,21 +122,21 @@
 <div class="dashboard">
 
   <div class="card header">
-    <div class="icon">🌙</div>
+    <div class="icon">&hellip;</div>
     <div class="place-info">
-      <h1>Warsaw, Poland</h1>
-      <p class="sub">Saturday, July 18 &middot; <span class="time" id="localTime"></span></p>
+      <h1>Loading&hellip;</h1>
+      <p class="sub"><span class="time"></span></p>
     </div>
     <div class="temp-block">
-      <div class="temp">20°C</div>
-      <div class="cond">Clear</div>
+      <div class="temp">&ndash;&deg;C</div>
+      <div class="cond"></div>
     </div>
   </div>
 
   <div class="card graph">
     <h3>Next 24 hours</h3>
     <div class="graph-wrap">
-      <canvas id="tempChart" role="img" aria-label="Chart of temperature and chance of rain over the next 24 hours. Temperature dips to about 17 degrees Celsius before dawn and rises to about 26 degrees Celsius in the afternoon. Chance of rain is highest now and overnight, tapering off by afternoon">Hourly temperature over the next 24h, in Celsius: now 20, +3h 18, +6h 17, +9h 19, +12h 23, +15h 26, +18h 24, +21h 21, +24h 20. Chance of rain, in percent: now 60, +3h 70, +6h 50, +9h 20, +12h 10, +15h 5, +18h 15, +21h 30, +24h 40.</canvas>
+      <canvas id="tempChart" role="img" aria-label="Chart of temperature and chance of rain for the next 24 hours, updated live from Open-Meteo">Loading live temperature and rain-chance data for the next 24 hours.</canvas>
     </div>
   </div>
 
@@ -146,101 +148,187 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script>
-  document.getElementById('localTime').textContent = '11:42 PM';
+  // --- location: change these for a different city ---
+  const LAT = 52.2297;
+  const LON = 21.0122;
+  const LOCATION_NAME = 'Warsaw, Poland';
 
-  // --- 24h trend (modeled diurnal curve; only daily highs/precip chance were available from the forecast source) ---
-  const hourLabels = ['Now', '+3h', '+6h', '+9h', '+12h', '+15h', '+18h', '+21h', '+24h'];
-  const hourTemps = [20, 18, 17, 19, 23, 26, 24, 21, 20];
-  const hourRain = [60, 70, 50, 20, 10, 5, 15, 30, 40];
+  // WMO weather codes -> [emoji, text]. https://open-meteo.com/en/docs
+  const WEATHER_CODES = {
+    0: ['\u2600\ufe0f', 'Clear'], 1: ['\ud83c\udf24\ufe0f', 'Mostly clear'],
+    2: ['\u26c5', 'Partly cloudy'], 3: ['\u2601\ufe0f', 'Overcast'],
+    45: ['\ud83c\udf2b\ufe0f', 'Fog'], 48: ['\ud83c\udf2b\ufe0f', 'Fog'],
+    51: ['\ud83c\udf27\ufe0f', 'Light drizzle'], 53: ['\ud83c\udf27\ufe0f', 'Drizzle'], 55: ['\ud83c\udf27\ufe0f', 'Dense drizzle'],
+    61: ['\ud83c\udf27\ufe0f', 'Light rain'], 63: ['\ud83c\udf27\ufe0f', 'Rain'], 65: ['\ud83c\udf27\ufe0f', 'Heavy rain'],
+    71: ['\ud83c\udf28\ufe0f', 'Light snow'], 73: ['\ud83c\udf28\ufe0f', 'Snow'], 75: ['\ud83c\udf28\ufe0f', 'Heavy snow'],
+    80: ['\ud83c\udf26\ufe0f', 'Showers'], 81: ['\ud83c\udf26\ufe0f', 'Showers'], 82: ['\u26c8\ufe0f', 'Violent showers'],
+    95: ['\u26c8\ufe0f', 'Thunderstorm'], 96: ['\u26c8\ufe0f', 'Thunderstorm'], 99: ['\u26c8\ufe0f', 'Thunderstorm']
+  };
+  const NIGHT_CLEAR_ICON = '\ud83c\udf19';
 
-  new Chart(document.getElementById('tempChart'), {
-    data: {
-      labels: hourLabels,
-      datasets: [
-        {
-          type: 'bar',
-          label: 'Chance of rain (%)',
-          data: hourRain,
-          backgroundColor: '#a9c7ea',
-          borderRadius: 3,
-          yAxisID: 'y1',
-          order: 2
-        },
-        {
-          type: 'line',
-          label: 'Temperature (\u00b0C)',
-          data: hourTemps,
-          borderColor: '#e0a800',
-          backgroundColor: 'rgba(224, 168, 0, 0.12)',
-          borderWidth: 2,
-          pointRadius: 4,
-          pointBackgroundColor: '#e0a800',
-          pointBorderColor: '#ffffff',
-          pointBorderWidth: 2,
-          fill: true,
-          tension: 0.35,
-          yAxisID: 'y',
-          order: 1
-        }
-      ]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: { legend: { display: false } },
-      scales: {
-        y: {
-          position: 'left',
-          ticks: { callback: (v) => v + '\u00b0' },
-          grid: { color: '#eceef1' }
-        },
-        y1: {
-          position: 'right',
-          min: 0,
-          max: 100,
-          ticks: { callback: (v) => v + '%' },
-          grid: { display: false }
-        },
-        x: {
-          grid: { display: false }
+  function iconFor(code, isDay) {
+    const entry = WEATHER_CODES[code] || ['\u2601\ufe0f', ''];
+    if ((code === 0 || code === 1) && isDay === 0) return NIGHT_CLEAR_ICON;
+    return entry[0];
+  }
+  function textFor(code) {
+    return (WEATHER_CODES[code] || ['', 'Unknown'])[1];
+  }
+
+  const params = new URLSearchParams({
+    latitude: LAT,
+    longitude: LON,
+    current: 'temperature_2m,weather_code,is_day',
+    hourly: 'temperature_2m,precipitation_probability',
+    daily: 'weather_code,temperature_2m_max,temperature_2m_min',
+    timezone: 'auto',
+    forecast_days: '6'
+  });
+
+  fetch(`https://api.open-meteo.com/v1/forecast?${params}`)
+    .then(res => {
+      if (!res.ok) throw new Error('Open-Meteo request failed: ' + res.status);
+      return res.json();
+    })
+    .then(renderDashboard)
+    .catch(err => {
+      console.error(err);
+      document.querySelector('.dashboard').insertAdjacentHTML(
+        'afterbegin',
+        '<p style="grid-column: 1 / -1; color: var(--text-secondary); font-size: 13px;">Couldn\u2019t load live weather data. Check your connection and reload.</p>'
+      );
+    });
+
+  function renderDashboard(data) {
+    renderHeader(data);
+    renderHourlyChart(data);
+    renderDays(data);
+  }
+
+  function renderHeader(data) {
+    const cur = data.current;
+    document.querySelector('.header .icon').textContent = iconFor(cur.weather_code, cur.is_day);
+    document.querySelector('.header h1').textContent = LOCATION_NAME;
+    document.querySelector('.temp-block .temp').textContent = Math.round(cur.temperature_2m) + '\u00b0C';
+    document.querySelector('.temp-block .cond').textContent = textFor(cur.weather_code);
+
+    const now = new Date(cur.time);
+    const dateStr = now.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
+    const timeStr = now.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+    document.querySelector('.header .sub').innerHTML = `${dateStr} &middot; <span class="time">${timeStr}</span>`;
+  }
+
+  function renderHourlyChart(data) {
+    const times = data.hourly.time;
+    const temps = data.hourly.temperature_2m;
+    const rain = data.hourly.precipitation_probability;
+
+    // find the index matching the current hour, then take the next 24 hours from there
+    const nowMs = new Date(data.current.time).getTime();
+    let startIdx = times.findIndex(t => new Date(t).getTime() >= nowMs);
+    if (startIdx === -1) startIdx = 0;
+
+    const hourLabels = [];
+    const hourTemps = [];
+    const hourRain = [];
+    for (let i = startIdx; i < startIdx + 24 && i < times.length; i += 3) {
+      const d = new Date(times[i]);
+      hourLabels.push(i === startIdx ? 'Now' : d.toLocaleTimeString(undefined, { hour: 'numeric' }));
+      hourTemps.push(Math.round(temps[i]));
+      hourRain.push(Math.round(rain[i]));
+    }
+
+    new Chart(document.getElementById('tempChart'), {
+      data: {
+        labels: hourLabels,
+        datasets: [
+          {
+            type: 'bar',
+            label: 'Chance of rain (%)',
+            data: hourRain,
+            backgroundColor: '#a9c7ea',
+            borderRadius: 3,
+            yAxisID: 'y1',
+            order: 2
+          },
+          {
+            type: 'line',
+            label: 'Temperature (\u00b0C)',
+            data: hourTemps,
+            borderColor: '#e0a800',
+            backgroundColor: 'rgba(224, 168, 0, 0.12)',
+            borderWidth: 2,
+            pointRadius: 4,
+            pointBackgroundColor: '#e0a800',
+            pointBorderColor: '#ffffff',
+            pointBorderWidth: 2,
+            fill: true,
+            tension: 0.35,
+            yAxisID: 'y',
+            order: 1
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          y: {
+            position: 'left',
+            ticks: { callback: (v) => v + '\u00b0' },
+            grid: { color: '#eceef1' }
+          },
+          y1: {
+            position: 'right',
+            min: 0,
+            max: 100,
+            ticks: { callback: (v) => v + '%' },
+            grid: { display: false }
+          },
+          x: {
+            grid: { display: false }
+          }
         }
       }
-    }
-  });
+    });
+  }
 
-  // --- upcoming days, each with a range bar scaled to the shared week min/max ---
-  const days = [
-    { name: 'Sat', icon: '\ud83c\udf27\ufe0f', low: 17, high: 26 },
-    { name: 'Sun', icon: '\ud83c\udf27\ufe0f', low: 17, high: 26 },
-    { name: 'Mon', icon: '\u2601\ufe0f', low: 14, high: 22 },
-    { name: 'Tue', icon: '\u2601\ufe0f', low: 11, high: 18 },
-    { name: 'Wed', icon: '\u2601\ufe0f', low: 13, high: 21 }
-  ];
+  function renderDays(data) {
+    const daily = data.daily;
+    const days = daily.time.slice(0, 5).map((dateStr, i) => ({
+      name: new Date(dateStr).toLocaleDateString(undefined, { weekday: 'short' }),
+      icon: iconFor(daily.weather_code[i], 1),
+      low: Math.round(daily.temperature_2m_min[i]),
+      high: Math.round(daily.temperature_2m_max[i])
+    }));
 
-  const weekMin = Math.min(...days.map(d => d.low));
-  const weekMax = Math.max(...days.map(d => d.high));
-  const weekSpan = weekMax - weekMin;
+    const weekMin = Math.min(...days.map(d => d.low));
+    const weekMax = Math.max(...days.map(d => d.high));
+    const weekSpan = weekMax - weekMin || 1;
 
-  const daysEl = document.getElementById('days');
-  days.forEach(d => {
-    const startPct = ((d.low - weekMin) / weekSpan) * 100;
-    const widthPct = ((d.high - d.low) / weekSpan) * 100;
+    const daysEl = document.getElementById('days');
+    daysEl.innerHTML = '';
+    days.forEach(d => {
+      const startPct = ((d.low - weekMin) / weekSpan) * 100;
+      const widthPct = ((d.high - d.low) / weekSpan) * 100;
 
-    const row = document.createElement('div');
-    row.className = 'day-row';
-    row.innerHTML = `
-      <span class="name">${d.name}</span>
-      <span class="icon">${d.icon}</span>
-      <span class="range-bar">
-        <span class="lo">${d.low}\u00b0</span>
-        <span class="track">
-          <span class="fill" style="left:${startPct}%; width:${widthPct}%;"></span>
+      const row = document.createElement('div');
+      row.className = 'day-row';
+      row.innerHTML = `
+        <span class="name">${d.name}</span>
+        <span class="icon">${d.icon}</span>
+        <span class="range-bar">
+          <span class="lo">${d.low}\u00b0</span>
+          <span class="track">
+            <span class="fill" style="left:${startPct}%; width:${widthPct}%;"></span>
+          </span>
+          <span class="hi">${d.high}\u00b0</span>
         </span>
-        <span class="hi">${d.high}\u00b0</span>
-      </span>
-    `;
-    daysEl.appendChild(row);
-  });
+      `;
+      daysEl.appendChild(row);
+    });
+  }
 </script>
 
 </body>
