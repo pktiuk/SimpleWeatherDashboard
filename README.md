@@ -7,6 +7,7 @@ HTML file you can open locally or host on GitHub Pages.
 
 https://pktiuk.github.io/SimpleWeatherDashboard/
 
+![screenshot](./screenshot.png)
 
 ## Setting the location
  
