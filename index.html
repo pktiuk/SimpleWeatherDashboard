@@ -14,7 +14,23 @@
     --text-secondary: #6b7280;
     --text-muted: #9aa0aa;
     --accent: #2a78d6;
+    --card-border-width: 1px;
   }
+
+  /* Monochromatic theme: pure black/white/gray for e-ink screens.
+     Activated with ?theme=monochromatic (default is "regular"). */
+  body.theme-monochromatic {
+    --bg: #ffffff;
+    --card: #ffffff;
+    --border: #000000;
+    --track: #d8d8d8;
+    --text-primary: #000000;
+    --text-secondary: #333333;
+    --text-muted: #555555;
+    --accent: #000000;
+    --card-border-width: 2px;
+  }
+
   * { box-sizing: border-box; }
   html, body { width: 100%; overflow-x: hidden; }
   body {
@@ -39,10 +55,14 @@
   }
   .card {
     background: var(--card);
-    border: 1px solid var(--border);
+    border: var(--card-border-width) solid var(--border);
     border-radius: 18px;
     padding: 28px 32px;
   }
+  body.theme-monochromatic { font-weight: 500; }
+  body.theme-monochromatic .track { border: 1px solid #000; background: #fff; }
+  body.theme-monochromatic .fill { background: #000; }
+  .icon svg { width: 1em; height: 1em; display: inline-block; vertical-align: -0.125em; }
   .header {
     grid-area: header;
     display: flex;
@@ -172,6 +192,12 @@
 
   const urlParams = new URLSearchParams(window.location.search);
 
+  // --- theme: "regular" (default) or "monochromatic" (?theme=monochromatic), for e-ink screens ---
+  const THEME = urlParams.get('theme') === 'monochromatic' ? 'monochromatic' : 'regular';
+  if (THEME === 'monochromatic') {
+    document.body.classList.add('theme-monochromatic');
+  }
+
   // WMO weather codes -> [emoji, text]. https://open-meteo.com/en/docs
   const WEATHER_CODES = {
     0: ['\u2600\ufe0f', 'Clear'], 1: ['\ud83c\udf24\ufe0f', 'Mostly clear'],
@@ -192,6 +218,42 @@
   }
   function textFor(code) {
     return (WEATHER_CODES[code] || ['', 'Unknown'])[1];
+  }
+
+  // WMO weather code -> [dayIconKey, nightIconKey], for the monochrome SVG icon set below.
+  const MONO_ICON_KEYS = {
+    0: ['sun', 'moon'], 1: ['cloud-sun', 'cloud-moon'],
+    2: ['cloud-sun', 'cloud-moon'], 3: ['cloud', 'cloud'],
+    45: ['fog', 'fog'], 48: ['fog', 'fog'],
+    51: ['drizzle', 'drizzle'], 53: ['drizzle', 'drizzle'], 55: ['drizzle', 'drizzle'],
+    61: ['rain', 'rain'], 63: ['rain', 'rain'], 65: ['rain', 'rain'],
+    71: ['snow', 'snow'], 73: ['snow', 'snow'], 75: ['snow', 'snow'],
+    80: ['rain', 'rain'], 81: ['rain', 'rain'], 82: ['storm', 'storm'],
+    95: ['storm', 'storm'], 96: ['storm', 'storm'], 99: ['storm', 'storm']
+  };
+
+  // Solid black-line/black-fill vector icons — legible on e-ink, unlike a grayscale
+  // filter over color emoji (which washes pale colors like cloud-white into nothing).
+  const MONO_SVG = {
+    'sun': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="4.3"/><line x1="12" y1="1.2" x2="12" y2="3.8"/><line x1="12" y1="20.2" x2="12" y2="22.8"/><line x1="1.2" y1="12" x2="3.8" y2="12"/><line x1="20.2" y1="12" x2="22.8" y2="12"/><line x1="4.4" y1="4.4" x2="6.2" y2="6.2"/><line x1="17.8" y1="17.8" x2="19.6" y2="19.6"/><line x1="4.4" y1="19.6" x2="6.2" y2="17.8"/><line x1="17.8" y1="6.2" x2="19.6" y2="4.4"/></svg>',
+    'moon': '<svg viewBox="0 0 24 24"><path fill="currentColor" d="M15.8 3.3a8.6 8.6 0 1 0 5 15.4 9.4 9.4 0 0 1-5-15.4z"/></svg>',
+    'cloud': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"><path d="M6.5 18h10.2a3.8 3.8 0 0 0 .4-7.6A5.3 5.3 0 0 0 6.9 9.3 3.8 3.8 0 0 0 6.5 18z"/></svg>',
+    'cloud-sun': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="16.3" cy="7.3" r="2.9"/><line x1="16.3" y1="1.8" x2="16.3" y2="3.2"/><line x1="21.3" y1="7.3" x2="19.9" y2="7.3"/><line x1="19.7" y1="3.9" x2="18.7" y2="4.9"/><path d="M5.7 18h9.4a3.5 3.5 0 0 0 .4-7 5 5 0 0 0-9.5 1.1A3.5 3.5 0 0 0 5.7 18z"/></svg>',
+    'cloud-moon': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path fill="currentColor" stroke="none" d="M19.2 2.6a5.3 5.3 0 1 0 2.9 9.4 5.8 5.8 0 0 1-2.9-9.4z"/><path d="M5.7 18h9.4a3.5 3.5 0 0 0 .4-7 5 5 0 0 0-9.5 1.1A3.5 3.5 0 0 0 5.7 18z"/></svg>',
+    'fog': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6.5 10.2h10.2a3.4 3.4 0 0 0 .3-6.8 4.9 4.9 0 0 0-9.4 1.1 3.4 3.4 0 0 0-1.1 5.7z"/><line x1="3" y1="14.2" x2="21" y2="14.2"/><line x1="3" y1="17.6" x2="21" y2="17.6"/><line x1="3" y1="21" x2="21" y2="21"/></svg>',
+    'drizzle': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6.3 13h9.9a3.4 3.4 0 0 0 .3-6.8 4.9 4.9 0 0 0-9.4 1.1A3.4 3.4 0 0 0 6.3 13z"/><line x1="8.3" y1="17" x2="7.5" y2="19.2"/><line x1="12.3" y1="17" x2="11.5" y2="19.2"/><line x1="16.3" y1="17" x2="15.5" y2="19.2"/></svg>',
+    'rain': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6.3 12.5h9.9a3.4 3.4 0 0 0 .3-6.8 4.9 4.9 0 0 0-9.4 1.1 3.4 3.4 0 0 0-.8 5.7z"/><line x1="7.8" y1="16.5" x2="6.6" y2="21.5"/><line x1="12" y1="16.5" x2="10.8" y2="21.5"/><line x1="16.2" y1="16.5" x2="15" y2="21.5"/></svg>',
+    'snow': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M6.3 12.5h9.9a3.4 3.4 0 0 0 .3-6.8 4.9 4.9 0 0 0-9.4 1.1 3.4 3.4 0 0 0-.8 5.7z"/><line x1="8" y1="16.6" x2="8" y2="21.4"/><line x1="6.2" y1="17.9" x2="9.8" y2="20.1"/><line x1="9.8" y1="17.9" x2="6.2" y2="20.1"/><line x1="16" y1="16.6" x2="16" y2="21.4"/><line x1="14.2" y1="17.9" x2="17.8" y2="20.1"/><line x1="17.8" y1="17.9" x2="14.2" y2="20.1"/></svg>',
+    'storm': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6.3 12h9.9a3.4 3.4 0 0 0 .3-6.8 4.9 4.9 0 0 0-9.4 1.1A3.4 3.4 0 0 0 6.3 12z"/><path fill="currentColor" stroke="none" d="M13.2 12.6l-3.4 5.6h3l-1.7 5 5-6.7h-3.2z"/></svg>'
+  };
+
+  function iconMarkup(code, isDay, isMono) {
+    if (isMono) {
+      const keys = MONO_ICON_KEYS[code] || ['cloud', 'cloud'];
+      const key = isDay === 0 ? keys[1] : keys[0];
+      return MONO_SVG[key] || MONO_SVG['cloud'];
+    }
+    return iconFor(code, isDay);
   }
 
   // Resolve the location to use, then kick off the forecast fetch.
@@ -266,7 +328,7 @@
 
   function renderHeader(data) {
     const cur = data.current;
-    document.querySelector('.header .icon').textContent = iconFor(cur.weather_code, cur.is_day);
+    document.querySelector('.header .icon').innerHTML = iconMarkup(cur.weather_code, cur.is_day, THEME === 'monochromatic');
     document.querySelector('.header h1').textContent = data._locationName;
     document.querySelector('.temp-block .temp').textContent = Math.round(cur.temperature_2m) + '\u00b0C';
     document.querySelector('.temp-block .cond').textContent = textFor(cur.weather_code);
@@ -297,6 +359,13 @@
       hourRain.push(Math.round(rain[i]));
     }
 
+    const isMono = THEME === 'monochromatic';
+    const rainColor = isMono ? '#bbbbbb' : '#a9c7ea';
+    const lineColor = isMono ? '#000000' : '#e0a800';
+    const lineFill = isMono ? 'rgba(0, 0, 0, 0.08)' : 'rgba(224, 168, 0, 0.12)';
+    const gridColor = isMono ? '#cccccc' : '#eceef1';
+    const tickColor = isMono ? '#000000' : undefined;
+
     new Chart(document.getElementById('tempChart'), {
       data: {
         labels: hourLabels,
@@ -305,7 +374,9 @@
             type: 'bar',
             label: 'Chance of rain (%)',
             data: hourRain,
-            backgroundColor: '#a9c7ea',
+            backgroundColor: rainColor,
+            borderColor: isMono ? '#000000' : rainColor,
+            borderWidth: isMono ? 1 : 0,
             borderRadius: 3,
             yAxisID: 'y1',
             order: 2
@@ -314,11 +385,11 @@
             type: 'line',
             label: 'Temperature (\u00b0C)',
             data: hourTemps,
-            borderColor: '#e0a800',
-            backgroundColor: 'rgba(224, 168, 0, 0.12)',
+            borderColor: lineColor,
+            backgroundColor: lineFill,
             borderWidth: 3,
             pointRadius: 5,
-            pointBackgroundColor: '#e0a800',
+            pointBackgroundColor: lineColor,
             pointBorderColor: '#ffffff',
             pointBorderWidth: 2,
             fill: true,
@@ -337,19 +408,19 @@
         scales: {
           y: {
             position: 'left',
-            ticks: { callback: (v) => v + '\u00b0', font: { size: 15 } },
-            grid: { color: '#eceef1' }
+            ticks: { callback: (v) => v + '\u00b0', font: { size: 15 }, color: tickColor },
+            grid: { color: gridColor }
           },
           y1: {
             position: 'right',
             min: 0,
             max: 100,
-            ticks: { callback: (v) => v + '%', font: { size: 15 } },
+            ticks: { callback: (v) => v + '%', font: { size: 15 }, color: tickColor },
             grid: { display: false }
           },
           x: {
             grid: { display: false },
-            ticks: { font: { size: 15 } }
+            ticks: { font: { size: 15 }, color: tickColor }
           }
         }
       }
@@ -360,7 +431,7 @@
     const daily = data.daily;
     const days = daily.time.slice(0, 5).map((dateStr, i) => ({
       name: new Date(dateStr).toLocaleDateString(undefined, { weekday: 'short' }),
-      icon: iconFor(daily.weather_code[i], 1),
+      icon: iconMarkup(daily.weather_code[i], 1, THEME === 'monochromatic'),
       low: Math.round(daily.temperature_2m_min[i]),
       high: Math.round(daily.temperature_2m_max[i])
     }));

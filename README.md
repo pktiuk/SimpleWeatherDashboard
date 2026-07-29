@@ -19,6 +19,7 @@ via URL parameters — no code edit needed:
 | `city` | `weather-dashboard.html?city=Tokyo`                  | Looks up the name via Open-Meteo's geocoding API and uses the first match. |
 | `lat` + `lon` | `weather-dashboard.html?lat=48.8566&lon=2.3522` | Uses the coordinates directly.                     |
 | `name` | `...&lat=48.8566&lon=2.3522&name=Paris,%20France`   | Optional label shown in the header alongside `lat`/`lon`. Ignored if `city` is used (the geocoding result's own name is used instead). |
+| `theme` | `regular` or `monochromatic` | |
  
 If none of these are present, it falls back to the defaults defined near the
 top of the `<script>` block:
