@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Weather dashboard</title>
 <style>
   :root {
@@ -18,13 +19,14 @@
   html, body { width: 100%; overflow-x: hidden; }
   body {
     margin: 0;
-    padding: 24px;
+    padding: 40px 24px;
     background: var(--bg);
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
     color: var(--text-primary);
+    font-size: 18px; /* base bump so 'em'-ish sizing everywhere feels bigger */
   }
   .dashboard {
-    max-width: 780px;
+    max-width: 1160px;
     width: 100%;
     margin: 0 auto;
     display: grid;
@@ -33,80 +35,81 @@
     grid-template-areas:
       "header days"
       "graph  days";
-    gap: 10px;
+    gap: 20px;
   }
   .card {
     background: var(--card);
     border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 16px 20px;
+    border-radius: 18px;
+    padding: 28px 32px;
   }
   .header {
     grid-area: header;
     display: flex;
     align-items: center;
-    gap: 14px;
+    gap: 24px;
   }
-  .header .icon { font-size: 34px; line-height: 1; flex-shrink: 0; }
+  .header .icon { font-size: 64px; line-height: 1; flex-shrink: 0; }
   .header .place-info { flex: 1; min-width: 0; }
-  .header h1 { margin: 0; font-size: 16px; font-weight: 600; }
-  .header .sub { margin: 2px 0 0; font-size: 12px; color: var(--text-secondary); }
-  .header .time { font-size: 12px; color: var(--text-secondary); }
+  .header h1 { margin: 0; font-size: 28px; font-weight: 600; }
+  .header .sub { margin: 6px 0 0; font-size: 18px; color: var(--text-secondary); }
+  .header .time { font-size: 18px; color: var(--text-secondary); }
   .header .temp-block { text-align: right; flex-shrink: 0; }
-  .header .temp { font-size: 28px; font-weight: 600; line-height: 1; }
-  .header .cond { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+  .header .temp { font-size: 52px; font-weight: 600; line-height: 1; }
+  .header .cond { font-size: 18px; color: var(--text-secondary); margin-top: 6px; }
 
   .graph { grid-area: graph; }
-  .graph h3 { margin: 0 0 8px; font-size: 13px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.03em; }
-  .graph-wrap { position: relative; width: 100%; height: 180px; }
+  .graph h3 { margin: 0 0 16px; font-size: 20px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.03em; }
+  .graph-wrap { position: relative; width: 100%; height: 320px; }
 
   .days {
     grid-area: days;
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 18px;
+    justify-content: space-between;
   }
   .day-row {
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 10px 14px;
+    gap: 18px;
+    padding: 16px 20px;
   }
-  .day-row .name { font-size: 13px; font-weight: 600; width: 34px; flex-shrink: 0; }
-  .day-row .icon { font-size: 18px; width: 24px; text-align: center; flex-shrink: 0; }
+  .day-row .name { font-size: 20px; font-weight: 600; width: 60px; flex-shrink: 0; }
+  .day-row .icon { font-size: 32px; width: 42px; text-align: center; flex-shrink: 0; }
 
   /* range bar widget: ( ||||| ) style, scaled to the shared week min/max */
   .range-bar {
     flex: 1;
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 12px;
     min-width: 0;
   }
   .range-bar .lo, .range-bar .hi {
-    font-size: 12px;
+    font-size: 18px;
     color: var(--text-secondary);
-    width: 30px;
+    width: 46px;
     flex-shrink: 0;
   }
   .range-bar .lo { text-align: right; }
   .range-bar .track {
     position: relative;
     flex: 1;
-    height: 14px;
+    height: 22px;
     background: var(--track);
-    border-radius: 3px;
+    border-radius: 6px;
     overflow: hidden;
   }
   .range-bar .fill {
     position: absolute;
-    top: 2px;
-    bottom: 2px;
+    top: 3px;
+    bottom: 3px;
     background: var(--accent);
-    border-radius: 2px;
+    border-radius: 4px;
   }
 
-  @media (max-width: 700px) {
+  @media (max-width: 900px) {
     .dashboard {
       grid-template-columns: minmax(0, 1fr);
       grid-template-areas:
@@ -114,6 +117,17 @@
         "graph"
         "days";
     }
+  }
+
+  @media (max-width: 600px) {
+    body { padding: 20px 14px; font-size: 17px; }
+    .card { padding: 22px 20px; border-radius: 16px; }
+    .header { gap: 16px; }
+    .header .icon { font-size: 48px; }
+    .header h1 { font-size: 24px; }
+    .header .temp { font-size: 42px; }
+    .graph-wrap { height: 240px; }
+    .day-row .icon { font-size: 28px; }
   }
 </style>
 </head>
@@ -188,7 +202,7 @@
       console.error(err);
       document.querySelector('.dashboard').insertAdjacentHTML(
         'afterbegin',
-        '<p style="grid-column: 1 / -1; color: var(--text-secondary); font-size: 13px;">Couldn\u2019t load live weather data. Check your connection, or the ?city= / ?lat=&lon= value in the URL, and reload.</p>'
+        '<p style="grid-column: 1 / -1; color: var(--text-secondary); font-size: 16px;">Couldn\u2019t load live weather data. Check your connection, or the ?city= / ?lat=&lon= value in the URL, and reload.</p>'
       );
     });
 
@@ -302,8 +316,8 @@
             data: hourTemps,
             borderColor: '#e0a800',
             backgroundColor: 'rgba(224, 168, 0, 0.12)',
-            borderWidth: 2,
-            pointRadius: 4,
+            borderWidth: 3,
+            pointRadius: 5,
             pointBackgroundColor: '#e0a800',
             pointBorderColor: '#ffffff',
             pointBorderWidth: 2,
@@ -317,22 +331,25 @@
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        plugins: { legend: { display: false } },
+        plugins: {
+          legend: { display: false }
+        },
         scales: {
           y: {
             position: 'left',
-            ticks: { callback: (v) => v + '\u00b0' },
+            ticks: { callback: (v) => v + '\u00b0', font: { size: 15 } },
             grid: { color: '#eceef1' }
           },
           y1: {
             position: 'right',
             min: 0,
             max: 100,
-            ticks: { callback: (v) => v + '%' },
+            ticks: { callback: (v) => v + '%', font: { size: 15 } },
             grid: { display: false }
           },
           x: {
-            grid: { display: false }
+            grid: { display: false },
+            ticks: { font: { size: 15 } }
           }
         }
       }
