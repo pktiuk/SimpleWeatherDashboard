@@ -20,6 +20,7 @@ via URL parameters — no code edit needed:
 | `lat` + `lon` | `weather-dashboard.html?lat=48.8566&lon=2.3522` | Uses the coordinates directly.                     |
 | `name` | `...&lat=48.8566&lon=2.3522&name=Paris,%20France`   | Optional label shown in the header alongside `lat`/`lon`. Ignored if `city` is used (the geocoding result's own name is used instead). |
 | `theme` | `regular` or `monochromatic` | |
+| `lang` | `lang=pl` or `lang=en-US` | |
  
 If none of these are present, it falls back to the defaults defined near the
 top of the `<script>` block:

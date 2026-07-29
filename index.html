@@ -192,6 +192,11 @@
 
   const urlParams = new URLSearchParams(window.location.search);
 
+  // --- language for date/time text: ?lang=pl, ?lang=en-US, etc. ---
+  // Falls back to the browser/OS default locale (undefined) if not set.
+  // Only affects weekday/month/time labels — not the weather data itself.
+  const LANG = urlParams.get('lang') || undefined;
+
   // --- theme: "regular" (default) or "monochromatic" (?theme=monochromatic), for e-ink screens ---
   const THEME = urlParams.get('theme') === 'monochromatic' ? 'monochromatic' : 'regular';
   if (THEME === 'monochromatic') {
@@ -334,8 +339,8 @@
     document.querySelector('.temp-block .cond').textContent = textFor(cur.weather_code);
 
     const now = new Date(cur.time);
-    const dateStr = now.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
-    const timeStr = now.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+    const dateStr = now.toLocaleDateString(LANG, { weekday: 'long', month: 'long', day: 'numeric' });
+    const timeStr = now.toLocaleTimeString(LANG, { hour: 'numeric', minute: '2-digit' });
     document.querySelector('.header .sub').innerHTML = `${dateStr} &middot; <span class="time">${timeStr}</span>`;
   }
 
@@ -354,7 +359,7 @@
     const hourRain = [];
     for (let i = startIdx; i < startIdx + 24 && i < times.length; i += 3) {
       const d = new Date(times[i]);
-      hourLabels.push(i === startIdx ? 'Now' : d.toLocaleTimeString(undefined, { hour: 'numeric' }));
+      hourLabels.push(i === startIdx ? 'Now' : d.toLocaleTimeString(LANG, { hour: 'numeric' }));
       hourTemps.push(Math.round(temps[i]));
       hourRain.push(Math.round(rain[i]));
     }
@@ -430,7 +435,7 @@
   function renderDays(data) {
     const daily = data.daily;
     const days = daily.time.slice(0, 5).map((dateStr, i) => ({
-      name: new Date(dateStr).toLocaleDateString(undefined, { weekday: 'short' }),
+      name: new Date(dateStr).toLocaleDateString(LANG, { weekday: 'short' }),
       icon: iconMarkup(daily.weather_code[i], 1, THEME === 'monochromatic'),
       low: Math.round(daily.temperature_2m_min[i]),
       high: Math.round(daily.temperature_2m_max[i])
