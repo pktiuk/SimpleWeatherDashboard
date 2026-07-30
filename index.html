@@ -57,7 +57,7 @@
     background: var(--card);
     border: var(--card-border-width) solid var(--border);
     border-radius: 18px;
-    padding: 28px 0;
+    padding: 28px 32px;
   }
   body.theme-monochromatic { font-weight: 500; }
   body.theme-monochromatic .track { border: 1px solid #000; background: #fff; }
@@ -197,32 +197,86 @@
   // Only affects weekday/month/time labels — not the weather data itself.
   const LANG = urlParams.get('lang') || undefined;
 
+  // --- UI text language: only "pl" and "en" are supported. Anything else (or
+  // no ?lang= at all) falls back to English, regardless of the LANG/Intl locale above. ---
+  const UI_LANG = (LANG && LANG.toLowerCase().startsWith('pl')) ? 'pl' : 'en';
+
+  const UI_TEXT = {
+    en: {
+      loadingTitle: 'Loading\u2026',
+      next24h: 'Next 24 hours',
+      now: 'Now',
+      chartAria: 'Chart of temperature and chance of rain for the next 24 hours, updated live from Open-Meteo',
+      chartFallback: 'Loading live temperature and rain-chance data for the next 24 hours.',
+      errorMsg: 'Couldn\u2019t load live weather data. Check your connection, or the ?city= / ?lat=&lon= value in the URL, and reload.',
+      unknown: 'Unknown'
+    },
+    pl: {
+      loadingTitle: 'Wczytywanie\u2026',
+      next24h: 'Nast\u0119pne 24 godziny',
+      now: 'Teraz',
+      chartAria: 'Wykres temperatury i szansy opad\u00f3w na najbli\u017csze 24 godziny, aktualizowany na \u017cywo z Open-Meteo',
+      chartFallback: 'Wczytywanie danych o temperaturze i szansie opad\u00f3w na najbli\u017csze 24 godziny.',
+      errorMsg: 'Nie uda\u0142o si\u0119 wczyta\u0107 danych pogodowych na \u017cywo. Sprawd\u017a po\u0142\u0105czenie lub warto\u015b\u0107 ?city= / ?lat=&lon= w adresie URL i od\u015bwie\u017c stron\u0119.',
+      unknown: 'Nieznane'
+    }
+  };
+  const T = UI_TEXT[UI_LANG];
+
+  // Apply static UI text for the resolved language immediately (before the fetch resolves).
+  document.querySelector('.header h1').textContent = T.loadingTitle;
+  document.querySelector('.graph h3').textContent = T.next24h;
+  const chartCanvas = document.getElementById('tempChart');
+  chartCanvas.setAttribute('aria-label', T.chartAria);
+  chartCanvas.textContent = T.chartFallback;
+
   // --- theme: "regular" (default) or "monochromatic" (?theme=monochromatic), for e-ink screens ---
   const THEME = urlParams.get('theme') === 'monochromatic' ? 'monochromatic' : 'regular';
   if (THEME === 'monochromatic') {
     document.body.classList.add('theme-monochromatic');
   }
 
-  // WMO weather codes -> [emoji, text]. https://open-meteo.com/en/docs
+  // WMO weather codes -> icon emoji. Text descriptions are looked up per-language below.
   const WEATHER_CODES = {
-    0: ['\u2600\ufe0f', 'Clear'], 1: ['\ud83c\udf24\ufe0f', 'Mostly clear'],
-    2: ['\u26c5', 'Partly cloudy'], 3: ['\u2601\ufe0f', 'Overcast'],
-    45: ['\ud83c\udf2b\ufe0f', 'Fog'], 48: ['\ud83c\udf2b\ufe0f', 'Fog'],
-    51: ['\ud83c\udf27\ufe0f', 'Light drizzle'], 53: ['\ud83c\udf27\ufe0f', 'Drizzle'], 55: ['\ud83c\udf27\ufe0f', 'Dense drizzle'],
-    61: ['\ud83c\udf27\ufe0f', 'Light rain'], 63: ['\ud83c\udf27\ufe0f', 'Rain'], 65: ['\ud83c\udf27\ufe0f', 'Heavy rain'],
-    71: ['\ud83c\udf28\ufe0f', 'Light snow'], 73: ['\ud83c\udf28\ufe0f', 'Snow'], 75: ['\ud83c\udf28\ufe0f', 'Heavy snow'],
-    80: ['\ud83c\udf26\ufe0f', 'Showers'], 81: ['\ud83c\udf26\ufe0f', 'Showers'], 82: ['\u26c8\ufe0f', 'Violent showers'],
-    95: ['\u26c8\ufe0f', 'Thunderstorm'], 96: ['\u26c8\ufe0f', 'Thunderstorm'], 99: ['\u26c8\ufe0f', 'Thunderstorm']
+    0: ['\u2600\ufe0f'], 1: ['\ud83c\udf24\ufe0f'],
+    2: ['\u26c5'], 3: ['\u2601\ufe0f'],
+    45: ['\ud83c\udf2b\ufe0f'], 48: ['\ud83c\udf2b\ufe0f'],
+    51: ['\ud83c\udf27\ufe0f'], 53: ['\ud83c\udf27\ufe0f'], 55: ['\ud83c\udf27\ufe0f'],
+    61: ['\ud83c\udf27\ufe0f'], 63: ['\ud83c\udf27\ufe0f'], 65: ['\ud83c\udf27\ufe0f'],
+    71: ['\ud83c\udf28\ufe0f'], 73: ['\ud83c\udf28\ufe0f'], 75: ['\ud83c\udf28\ufe0f'],
+    80: ['\ud83c\udf26\ufe0f'], 81: ['\ud83c\udf26\ufe0f'], 82: ['\u26c8\ufe0f'],
+    95: ['\u26c8\ufe0f'], 96: ['\u26c8\ufe0f'], 99: ['\u26c8\ufe0f']
+  };
+  const CONDITION_TEXT = {
+    en: {
+      0: 'Clear', 1: 'Mostly clear', 2: 'Partly cloudy', 3: 'Overcast',
+      45: 'Fog', 48: 'Fog',
+      51: 'Light drizzle', 53: 'Drizzle', 55: 'Dense drizzle',
+      61: 'Light rain', 63: 'Rain', 65: 'Heavy rain',
+      71: 'Light snow', 73: 'Snow', 75: 'Heavy snow',
+      80: 'Showers', 81: 'Showers', 82: 'Violent showers',
+      95: 'Thunderstorm', 96: 'Thunderstorm', 99: 'Thunderstorm'
+    },
+    pl: {
+      0: 'Bezchmurnie', 1: 'Prawie bezchmurnie', 2: 'Cz\u0119\u015bciowe zachmurzenie', 3: 'Zachmurzenie',
+      45: 'Mg\u0142a', 48: 'Mg\u0142a',
+      51: 'Lekka m\u017cawka', 53: 'M\u017cawka', 55: 'G\u0119sta m\u017cawka',
+      61: 'Lekki deszcz', 63: 'Deszcz', 65: 'Silny deszcz',
+      71: 'Lekki \u015bnieg', 73: '\u015anieg', 75: 'Silny \u015bnieg',
+      80: 'Przelotne opady', 81: 'Przelotne opady', 82: 'Gwa\u0142towne opady',
+      95: 'Burza', 96: 'Burza', 99: 'Burza'
+    }
   };
   const NIGHT_CLEAR_ICON = '\ud83c\udf19';
 
   function iconFor(code, isDay) {
-    const entry = WEATHER_CODES[code] || ['\u2601\ufe0f', ''];
+    const entry = WEATHER_CODES[code] || ['\u2601\ufe0f'];
     if ((code === 0 || code === 1) && isDay === 0) return NIGHT_CLEAR_ICON;
     return entry[0];
   }
   function textFor(code) {
-    return (WEATHER_CODES[code] || ['', 'Unknown'])[1];
+    const table = CONDITION_TEXT[UI_LANG];
+    return (table && table[code]) || T.unknown;
   }
 
   // WMO weather code -> [dayIconKey, nightIconKey], for the monochrome SVG icon set below.
@@ -269,7 +323,7 @@
       console.error(err);
       document.querySelector('.dashboard').insertAdjacentHTML(
         'afterbegin',
-        '<p style="grid-column: 1 / -1; color: var(--text-secondary); font-size: 16px;">Couldn\u2019t load live weather data. Check your connection, or the ?city= / ?lat=&lon= value in the URL, and reload.</p>'
+        `<p style="grid-column: 1 / -1; color: var(--text-secondary); font-size: 16px;">${T.errorMsg}</p>`
       );
     });
 
@@ -359,7 +413,7 @@
     const hourRain = [];
     for (let i = startIdx; i < startIdx + 24 && i < times.length; i += 3) {
       const d = new Date(times[i]);
-      hourLabels.push(i === startIdx ? 'Now' : d.toLocaleTimeString(LANG, { hour: 'numeric' }));
+      hourLabels.push(i === startIdx ? T.now : d.toLocaleTimeString(LANG, { hour: 'numeric' }));
       hourTemps.push(Math.round(temps[i]));
       hourRain.push(Math.round(rain[i]));
     }
